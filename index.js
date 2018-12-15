@@ -1,3 +1,10 @@
+
+process.env.NODE_ENV = process.env.NODE_ENV || 'dev';
+const r = require('dotenv').config({ path:  '.env.'+ process.env.NODE_ENV});
+if(r.error){
+	console.log(r);
+}
+const conf = require('./conf');
 const express = require('express');
 const bodyParser = require('body-parser');
 const alltomp3 = require('alltomp3');
@@ -25,10 +32,34 @@ router.post('/suggestion', async (req, res) => {
 })
 router.post('/download',async (req,res)=>{
     try {
-        alltomp3.downloadTrack(req.body.track,'./download',(r,e)=>{
+        const emitter = alltomp3.downloadTrack(req.body.track,conf.tempDir,(r,e)=>{
+            if(e){
+                res.status(500).json(e);
+            }else{
+                res.json(r);
+            }            
             console.log(r,e);
         },true);
-        res.json({url:''});
+        emitter.once('error',(e)=>{
+            console.error('emitter error',e);
+        })
+        download
+        emitter.once('download',infos=>{
+            console.log('download',infos);            
+        })
+        emitter.once('end',infos=>{
+            console.log('end',infos);            
+        })
+        emitter.once('convert',infos=>{
+            console.log('convert',infos);            
+        })
+        emitter.once('download-end',()=>{
+            console.log('download-end');            
+        })
+        emitter.once('convert-end',()=>{
+            console.log('convert-end');            
+        })
+        
     } catch (error) {
         res.status(500).json(error);
     }
