@@ -42,8 +42,7 @@ router.post('/download',async (req,res)=>{
         },true);
         emitter.once('error',(e)=>{
             console.error('emitter error',e);
-        })
-        download
+        })        
         emitter.once('download',infos=>{
             console.log('download',infos);            
         })
