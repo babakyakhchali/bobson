@@ -1,8 +1,11 @@
+var path = require('path');
 var conf = {
 	defaultBaseUrl: process.env.BASEURL,
 	db: process.env.DB_CSTR,
     port: 3300,
-    tempDir:process.env.TEMP_DIR,
+	tempDir:process.env.TEMP_DIR,
+	downloadDir:process.env.DOWNLOAD_DIR || './downloads',
+	youtubeDlPath: process.env.YOUTUBE_DL_PATH || 'youtube-dl',
 	mailer: {
 		host: process.env.MAILER_HOST,
 		account: process.env.MAILER_ACCOUNT,
@@ -28,4 +31,7 @@ var conf = {
 	}
 	, secret: process.env.API_SECRET
 };
+if(!path.isAbsolute(conf.downloadDir)){
+	conf.downloadDir = path.join(__dirname,conf.downloadDir);
+}
 module.exports = conf;

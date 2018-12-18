@@ -10,55 +10,69 @@ const bodyParser = require('body-parser');
 const alltomp3 = require('alltomp3');
 const app = express();
 const router = express.Router();
+const fs = require('fs-extra')
+var path = require('path');
+
+
+
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
 
+const api = require('./api');
 
 router.post('/suggestion', async (req, res) => {
     try {
         let q = req.body.query;
         let limit = req.body.limit || 5;
-        let suggestions = await Promise.all([
-            alltomp3.suggestedSongs(q, limit),
-            alltomp3.suggestedAlbums(q, limit),
-        ]);
-        res.json({ songs: suggestions[0], albums: suggestions[1] });
+        res.json(await api.searchDeezerForSongs(q,limit));
     } catch (error) {
         res.status(500).json(error);
     }
-
 })
+router.post('/searchTube',async (req,res)=>{
+    try {        
+        res.json(await api.searchYouTube(req.body.artistName,req.body.title));
+    } catch (error) {
+        res.status(500).json(error);
+    }
+})
+
+router.post('/downloadTube',async (req,res)=>{
+    try {
+        let d = await api.downloadFromYouTube(req.body.url,__dirname+'/downloads');
+        if(d.error != ''){
+            throw d.error;
+        }
+        res.sendFile(__dirname+'/'+d.fileName);
+    } catch (error) {
+        res.status(500).json(error);
+    }
+})
+/**
+ {
+            "title": "La Isla Bonita",
+            "artistName": "Madonna",
+            "duration": 327,
+            "cover": "https://e-cdns-images.dzcdn.net/images/cover/43a8e2b1b035391f58b0927cf1040bc4/250x250-000000-80-0-0.jpg",
+            "deezerId": 678372
+        }
+ */
 router.post('/download',async (req,res)=>{
     try {
-        const emitter = alltomp3.downloadTrack(req.body.track,conf.tempDir,(r,e)=>{
-            if(e){
-                res.status(500).json(e);
-            }else{
-                res.json(r);
-            }            
-            console.log(r,e);
-        },true);
-        emitter.once('error',(e)=>{
-            console.error('emitter error',e);
-        })        
-        emitter.once('download',infos=>{
-            console.log('download',infos);            
-        })
-        emitter.once('end',infos=>{
-            console.log('end',infos);            
-        })
-        emitter.once('convert',infos=>{
-            console.log('convert',infos);            
-        })
-        emitter.once('download-end',()=>{
-            console.log('download-end');            
-        })
-        emitter.once('convert-end',()=>{
-            console.log('convert-end');            
-        })
-        
+        let dir = path.join(conf.downloadDir,req.body.artistName);       
+        let videos = await api.searchYouTube(req.body.artistName,req.body.title);
+        if(videos.length>0){    //prevent trash dirs
+            fs.ensureDirSync(dir);
+        }
+        for (const video of videos) {
+            let d = await api.downloadFromYouTube(video.url,dir);   //TODO: use caching to prevent duplicate downloads
+            if(d.error == ''){
+                return res.sendFile(path.join(dir,d.fileName));                
+            }
+        }   
+        throw 'nothing could be downloaded :(';  
     } catch (error) {
         res.status(500).json(error);
     }
